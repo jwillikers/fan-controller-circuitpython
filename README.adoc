@@ -1,0 +1,226 @@
+= Fan Controller
+Jordan Williams <jordan@jwillikers.com>
+:experimental:
+:icons: font
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+:Adafruit-EMC2101: https://www.adafruit.com/product/4808[Adafruit EMC2101 I2C PC Fan Controller and Temperature Sensor]
+:Adafruit-QT-Py-RP2040: https://www.adafruit.com/product/4900[Adafruit QT Py RP2040]
+:CircuitPython: https://circuitpython.org/[CircuitPython]
+:Noctua-NF-P12-redux-1700-PWM-Fan: https://noctua.at/en/nf-p12-redux-1700-pwm[Noctua NF-P12 redux-1700 PWM Fan]
+:pre-commit: https://pre-commit.com/[pre-commit]
+:pipkin: https://github.com/aivarannamaa/pipkin[pipkin]
+
+image:https://github.com/jwillikers/fan-controller/workflows/CI/badge.svg["Build Status", link="https://github.com/jwillikers/fan-controller/actions?query=workflow%3ACI"]
+image:https://img.shields.io/github/workflow/status/jwillikers/humidity-sensor-circuitpython/CI[GitHub Workflow Status]
+
+// todo Port to C++ and eventually Rust.
+
+A simple fan controller using the {Adafruit-QT-Py-RP2040} and the {Adafruit-EMC2101}, written in {CircuitPython}.
+
+// ifdef::env-github[]
+// ++++
+// <p align="center">
+//   <img  alt="Humidity Sensor" src="pics/Humidity Sensor Top.jpg?raw=true"/>
+// </p>
+// <p align="center">
+//   <img  alt="Humidity Sensor Demo" src="pics/Humidity Sensor Demo.gif?raw=true"/>
+// </p>
+// ++++
+// endif::[]
+
+// ifndef::env-github[]
+// image::pics/Humidity Sensor Top.jpg[Humidity Sensor, align=center]
+// image::pics/Humidity Sensor Demo.gif[Humidity Sensor Demo, align=center]
+// endif::[]
+
+== Hardware
+
+All the hardware components in my particular build are enumerated here.
+
+.Fan Controller Components
+* {Adafruit-QT-Py-RP2040}
+* {Adafruit-EMC2101}
+* https://www.adafruit.com/product/64[Half-size breadboard]
+* {Noctua-NF-P12-redux-1700-PWM-Fan}
+* https://www.adafruit.com/product/759[Premium Male/Male Jumper Wires - 40 x 3" (75mm)]
+* https://www.adafruit.com/product/4399[STEMMA QT / Qwiic JST SH 4-Pin Cable - 50mm Long]
+* USB-C Power Supply for the microcontroller
+
+Programming will require a USB-C cable and a computer.
+
+== How it Works
+
+This is a dead-simple fan controller that simply lowers the speed of the {Noctua-NF-P12-redux-1700-PWM-Fan} to a quiet 40% speed.
+The microcontroller simply sets the fan speed and then enters deep sleep indefinitely.
+Technically, it enters deep sleep for around nineteen years, but after it sets the initial fan speed on the EMC2101 there's no compelling reason for it to wake up again.
+I could probably use PWM straight from the microcontroller just as easily, but the EMC2101 development board has an even easier to use CircuitPython library.
+The fan setup might evolve in the future to take into account temperature sensing dynamic speed adjustment.
+
+== Getting Started
+
+The instructions here setup the software for the QT Py RP2040.
+It is assumed that you are on and familiar with Linux and using CircuitPython on microcontrollers.
+Fedora Silverblue 34 is used as the reference operating system and the shell used is fish.
+
+[TIP]
+====
+To access the serial connection to the QT Py RP2040 without requiring superuser privileges, add your user to the `dialout` group.
+
+[source,sh]
+----
+sudo usermod -a -G dialout $USER
+----
+
+Now restart for the change to take effect.
+====
+
+. First, configure the QT Py RP2040 for CircuitPython by installing the latest version of CircuitPython for the board.
+The CircuitPython bootloader for the Feather RP2040 is available on the https://circuitpython.org/board/adafruit_qtpy_rp2040/[CircuitPython Adafruit QT Py RP2040 page].
+At the time of writing, the latest stable version of CircuitPython is version 7.2.5.
++
+[source,sh]
+----
+wget -qLP ~/Downloads https://downloads.circuitpython.org/bin/adafruit_qtpy_rp2040/en_US/adafruit-circuitpython-adafruit_qtpy_rp2040-en_US-7.2.5.uf2
+----
+
+. Hold down the button marked _bootsel_ on the QT Py RP2040 while plugging it in to your computer with a USB-C cable.
+The RP2040 should automatically be mounted as a disk on your computer.
+In my case, it has been mounted at `/run/media/jordan/RPI-RP2`.
+The lsblk command can be used to find where it has been mounted
++
+[source,sh]
+----
+lsblk
+----
+
+. Now copy over the U2F bootloader to the RP2040.
++
+[source,sh]
+----
+cp ~/Downloads/adafruit-circuitpython-adafruit_qtpy_rp2040-en_US-7.2.5.uf2 /run/media/$USER/RPI-RP2
+----
+
+. Wait for the file to finish copying, after which the Feather RP2040's onboard storage should automatically be mounted.
+This is mounted at `/run/media/jordan/CIRCUITPY` on my machine.
+
+. Clone this project's repository.
++
+[source,sh]
+----
+git clone https://github.com/jwillikers/fan-controller.git
+----
+
+. Change into the project directory.
++
+[source,sh]
+----
+cd fan-controller
+----
+
+. Install the necessary libraries on the microcontroller using {pipkin}.
++
+[source,sh]
+----
+pipkin -m /run/media/$USER/CIRCUITPY install -r requirements.txt
+----
+
+. Copy the `code.py` source code file to the QT Py RP2040.
++
+[source,sh]
+----
+cp code.py /run/media/$USER/CIRCUITPY/
+----
+
+. Eject the QT Py RP2040 from the computer when you're ready to remove it from your computer.
++
+[source,sh]
+----
+udisksctl unmount -b (findmnt -n -o SOURCE --target /run/media/$USER/CIRCUITPY)
+----
+
+== Development
+
+It's recommended to create a virtual environment for the project and to use the provided {pre-commit} checks when developing.
+
+. Create a virtual environment for the project.
++
+[source,sh]
+----
+python -m venv .env
+----
+
+. Activate the virtual environment.
++
+[source,sh]
+----
+source .env/bin/activate.fish
+----
+
+. Install the packages available for CircuitPython directly on your computer.
+This enables tools and editors to better verify that the libraries are being used properly.
++
+[source,sh]
+----
+pip install -r requirements.txt
+----
+
+. Install the development dependencies.
++
+[source,sh]
+----
+pip install -r requirements-dev.txt
+----
+
+. Install the Git hooks for pre-commit.
+.
++
+[source,sh]
+----
+pre-commit install
+----
+
+== Documentation
+
+.CircuitPython Documentation
+* https://circuitpython.readthedocs.io/en/latest/shared-bindings/alarm/index.html[alarm]
+* https://docs.circuitpython.org/projects/emc2101/en/latest/[emc2101]
+
+== Contributing
+
+Contributions in the form of issues, feedback, and even pull requests are welcome.
+Make sure to adhere to the project's link:CODE_OF_CONDUCT.adoc[Code of Conduct].
+
+== Open Source Software
+
+This project is built on the hard work of countless open source contributors.
+Several of these projects are enumerated below.
+
+* https://asciidoctor.org/[Asciidoctor]
+* {CircuitPython}
+* https://git-scm.com/[Git]
+* https://www.linuxfoundation.org/[Linux]
+* {pre-commit}
+* {pipkin}
+* https://www.python.org/[Python]
+* https://rouge.jneen.net/[Rouge]
+* https://www.ruby-lang.org/en/[Ruby]
+
+== Code of Conduct
+
+Refer to the project's link:CODE_OF_CONDUCT.adoc[Code of Conduct] for details.
+
+== License
+
+This repository is licensed under the https://www.gnu.org/licenses/gpl-3.0.html[GPLv3], a copy of which is provided link:LICENSE.adoc[here].
+
+© 2022 Jordan Williams
+
+== Authors
+
+mailto:{email}[{author}]

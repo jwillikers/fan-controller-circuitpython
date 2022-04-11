@@ -1,0 +1,5 @@
+black
+pipkin
+pre-commit
+pylint
+yamllint
