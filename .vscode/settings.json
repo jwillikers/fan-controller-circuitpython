@@ -19,6 +19,7 @@
         "ifdef",
         "ifndef",
         "inplace",
+        "justfile",
         "microcontroller",
         "microcontrollers",
         "MOSI",
