@@ -9,18 +9,18 @@ format:
 
 init:
     [ -d venv ] || python -m venv venv
-    venv/bin/python -m pip install -r requirements.txt
+    venv/bin/python -m pip install --requirement requirements.txt
 
 init-dev: && sync
     [ -d venv ] || python -m venv venv
-    venv/bin/python -m pip install -r requirements-dev.txt
+    venv/bin/python -m pip install --requirement requirements-dev.txt
     venv/bin/pre-commit install
 
 install-circuitpython version="7.2.5":
     curl --location --output-dir /run/media/$(id --name --user)/RPI-RP2 --remote-name https://downloads.circuitpython.org/bin/adafruit_qtpy_rp2040/en_US/adafruit-circuitpython-adafruit_qtpy_rp2040-en_US-{{ version }}.uf2
 
 install:
-    venv/bin/pipkin -m /run/media/$(id --name --user)/CIRCUITPY install --compile -r requirements-circuitpython.txt
+    venv/bin/pipkin --mount /run/media/$(id --name --user)/CIRCUITPY install --compile --requirement requirements-circuitpython.txt
     cp code.py /run/media/$(id --name --user)/CIRCUITPY
     udisksctl unmount --block-device $(findmnt --noheadings --output SOURCE --target /run/media/$(id --name --user)/CIRCUITPY)
 
@@ -28,7 +28,7 @@ alias l := lint
 
 lint:
     venv/bin/yamllint .
-    venv/bin/ruff check .
+    venv/bin/ruff check --fix .
 
 sync:
     venv/bin/pip-sync requirements-dev.txt requirements.txt
